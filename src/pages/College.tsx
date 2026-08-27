@@ -18,10 +18,10 @@ export default function College() {
     <div className="shell">
       <div className="main">
         <nav className="nav">
-          <a className="brand" href="/college">
+          <Link className="brand" to="/college">
             <span className="mark">N</span>
             Northline College
-          </a>
+          </Link>
           <div className="nav-links">
             <a href="#about">About</a>
             <a href="#programs">Programs</a>
