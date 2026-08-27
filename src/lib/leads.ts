@@ -35,7 +35,8 @@ export type LeadPayload = {
 };
 
 export const DEFAULT_API = {
-  apiBase: "http://api-dev.houseofapps.ai",
+  // Empty = same origin; Vite proxies /v1 → api-dev (no CORS)
+  apiBase: "",
   apiPath: "/v1/integrations/leads",
   licenseKey: "lic-IMK4C8FcTTgK+BdNCD2FaLDq4pUNo8EFW4d",
   appSecret:
@@ -139,7 +140,11 @@ export async function createLead(opts: {
   const base = opts.apiBase.trim().replace(/\/+$/, "");
   let path = opts.apiPath.trim() || "/v1/integrations/leads";
   if (!path.startsWith("/")) path = "/" + path;
+  // Relative /v1/... goes through Vite proxy (no CORS). Curl still uses real host.
   const url = base + path;
+  const curlUrl = base
+    ? url
+    : "http://api-dev.houseofapps.ai" + path;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     licenseKey: opts.licenseKey.trim(),
@@ -157,5 +162,11 @@ export async function createLead(opts: {
   } catch {
     /* raw */
   }
-  return { url, headers, res, parsed, curl: buildCurl(url, headers, opts.body) };
+  return {
+    url,
+    headers,
+    res,
+    parsed,
+    curl: buildCurl(curlUrl, headers, opts.body),
+  };
 }
