@@ -1,33 +1,23 @@
-# React + TypeScript + Vite
+# Northline College — UTM lead test (React)
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+## Run
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+cd college-utm
+npm install
+npm run dev
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
-# utm-testing
+Open the URL Vite prints (usually `http://localhost:5173`).
+
+## Exact ad → landing → form flow
+
+1. Start at `/` (fake Google Ads SERP)
+2. Click the **Sponsored** ad
+3. Land on `/college?utm_source=google&utm_medium=cpc&...`
+4. Click **Apply** / **Start an inquiry**
+5. Submit → CRM lead with `marketing_attribution`
+
+`licenseKey` / `appSecret` are prefilled in the form Dev settings (api-dev).
+
+Old static HTML copies live in `../legacy/`.
