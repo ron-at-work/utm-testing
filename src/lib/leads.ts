@@ -20,11 +20,16 @@ export type MarketingAttribution = Partial<
   }
 >;
 
+export type LeadNote = {
+  title: string;
+  content: string;
+};
+
 export type LeadPayload = {
   lead: {
     name: string;
     email?: string;
-    notes?: string[];
+    notes?: LeadNote[];
     marketing_attribution: MarketingAttribution;
   };
 };
@@ -40,18 +45,18 @@ export const DEFAULT_API = {
 export const GOOGLE_ADS_UTMS: Record<UtmKey, string> = {
   utm_source: "google",
   utm_medium: "cpc",
-  utm_campaign: "dental-leads",
-  utm_content: "dental-implants",
-  utm_term: "dental implants",
+  utm_campaign: "northline-admissions",
+  utm_content: "open-house-ad",
+  utm_term: "northline college inquiry",
 };
 
 export const GOOGLE_ADS_CAMPAIGN = {
-  campaign_id: "123456",
-  campaign_name: "Dental Leads",
-  ad_group_id: "789012",
-  ad_group_name: "Dental Implants",
-  ad_id: "456789",
-  ad_name: "Dental Implants - Free Consultation",
+  campaign_id: "nl-adm-2026",
+  campaign_name: "Northline Admissions",
+  ad_group_id: "nl-inquiry",
+  ad_group_name: "College Inquiry",
+  ad_id: "nl-ad-openhouse",
+  ad_name: "Northline College — Fall Inquiry",
 };
 
 export function readUtmsFromSearch(search: string): Partial<Record<UtmKey, string>> {
@@ -84,10 +89,17 @@ export function buildLeadPayload(input: {
   message: string;
   attribution: MarketingAttribution;
 }): LeadPayload {
-  const notes: string[] = [];
-  if (input.phone.trim()) notes.push("Phone: " + input.phone.trim());
-  if (input.city.trim()) notes.push("City: " + input.city.trim());
-  if (input.message.trim()) notes.push(input.message.trim());
+  // API expects notes: [{ title, content }, ...]
+  const notes: LeadNote[] = [];
+  if (input.phone.trim()) {
+    notes.push({ title: "Phone", content: input.phone.trim() });
+  }
+  if (input.city.trim()) {
+    notes.push({ title: "City", content: input.city.trim() });
+  }
+  if (input.message.trim()) {
+    notes.push({ title: "Message", content: input.message.trim() });
+  }
 
   const lead: LeadPayload["lead"] = {
     name: input.name.trim(),

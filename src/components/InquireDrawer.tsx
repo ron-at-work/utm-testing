@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useLocation } from "react-router-dom";
 import {
   DEFAULT_API,
-  GOOGLE_ADS_CAMPAIGN,
-  UTM_KEYS,
   buildCurl,
   buildLeadPayload,
   createLead,
   omitEmpty,
   readUtmsFromSearch,
-  type UtmKey,
 } from "../lib/leads";
 
 type Props = {
@@ -23,17 +20,10 @@ const emptyForm = {
   phone: "",
   city: "",
   message: "",
-  utm_source: "",
-  utm_medium: "",
-  utm_campaign: "",
-  utm_content: "",
-  utm_term: "",
-  landing_page_url: "",
-  ...GOOGLE_ADS_CAMPAIGN,
 };
 
 export default function InquireDrawer({ open, onClose }: Props) {
-  const [searchParams] = useSearchParams();
+  const location = useLocation();
   const [form, setForm] = useState(emptyForm);
   const [api, setApi] = useState(DEFAULT_API);
   const [status, setStatus] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
@@ -44,20 +34,8 @@ export default function InquireDrawer({ open, onClose }: Props) {
   } | null>(null);
   const [sending, setSending] = useState(false);
 
-  const urlUtms = useMemo(
-    () => readUtmsFromSearch(searchParams.toString() ? `?${searchParams.toString()}` : ""),
-    [searchParams],
-  );
-
-  useEffect(() => {
-    if (!open) return;
-    const landing = window.location.href;
-    setForm((prev) => ({
-      ...prev,
-      ...Object.fromEntries(UTM_KEYS.map((k) => [k, urlUtms[k] || ""])),
-      landing_page_url: landing,
-    }));
-  }, [open, urlUtms]);
+  // UTMs stay in URL only — not shown in the form UI
+  const urlUtms = useMemo(() => readUtmsFromSearch(location.search), [location.search]);
 
   useEffect(() => {
     document.body.classList.toggle("form-open", open);
@@ -73,7 +51,7 @@ export default function InquireDrawer({ open, onClose }: Props) {
     return () => document.removeEventListener("keydown", onKey);
   }, [open, onClose]);
 
-  function setField(key: string, value: string) {
+  function setField(key: keyof typeof emptyForm, value: string) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
@@ -87,18 +65,8 @@ export default function InquireDrawer({ open, onClose }: Props) {
     }
 
     const attribution = omitEmpty({
-      utm_source: form.utm_source,
-      utm_medium: form.utm_medium,
-      utm_campaign: form.utm_campaign,
-      utm_content: form.utm_content,
-      utm_term: form.utm_term,
-      campaign_id: form.campaign_id,
-      campaign_name: form.campaign_name,
-      ad_group_id: form.ad_group_id,
-      ad_group_name: form.ad_group_name,
-      ad_id: form.ad_id,
-      ad_name: form.ad_name,
-      landing_page_url: form.landing_page_url || window.location.href,
+      ...urlUtms,
+      landing_page_url: window.location.href,
     });
 
     const body = buildLeadPayload({
@@ -121,12 +89,7 @@ export default function InquireDrawer({ open, onClose }: Props) {
       const result = await createLead({ ...api, body });
       setDebug({
         request: JSON.stringify(
-          {
-            method: "POST",
-            url: result.url,
-            headers: redactedHeaders,
-            body,
-          },
+          { method: "POST", url: result.url, headers: redactedHeaders, body },
           null,
           2,
         ),
@@ -139,27 +102,16 @@ export default function InquireDrawer({ open, onClose }: Props) {
       if (result.res.ok) {
         setStatus({
           kind: "ok",
-          text: "Inquiry sent — check CRM Marketing attribution",
+          text: "Thanks — your inquiry was sent.",
         });
-        setForm((prev) => ({
-          ...emptyForm,
-          ...Object.fromEntries(UTM_KEYS.map((k) => [k, urlUtms[k] || ""])),
-          landing_page_url: window.location.href,
-          campaign_id: prev.campaign_id,
-          campaign_name: prev.campaign_name,
-          ad_group_id: prev.ad_group_id,
-          ad_group_name: prev.ad_group_name,
-          ad_id: prev.ad_id,
-          ad_name: prev.ad_name,
-        }));
+        setForm(emptyForm);
       } else {
         setStatus({
           kind: "err",
-          text: `HTTP ${result.res.status} — see debug / curl`,
+          text: `Something went wrong (HTTP ${result.res.status}).`,
         });
       }
     } catch (err) {
-      const bodyForCurl = body;
       const headers = {
         "Content-Type": "application/json",
         licenseKey: api.licenseKey,
@@ -171,9 +123,9 @@ export default function InquireDrawer({ open, onClose }: Props) {
       setDebug({
         request: JSON.stringify({ url, headers: redactedHeaders, body }, null, 2),
         response: String(err),
-        curl: `# Network / CORS — run:\n${buildCurl(url, headers, bodyForCurl)}`,
+        curl: `# Network / CORS — run:\n${buildCurl(url, headers, body)}`,
       });
-      setStatus({ kind: "err", text: "Network / CORS — use curl below" });
+      setStatus({ kind: "err", text: "Network error — try again." });
     } finally {
       setSending(false);
     }
@@ -195,27 +147,14 @@ export default function InquireDrawer({ open, onClose }: Props) {
         <div className="side-head">
           <div>
             <h2>Apply / inquire</h2>
-            <p>Form sends a CRM lead with full marketing attribution.</p>
+            <p>Admissions replies within two school days.</p>
           </div>
           <button type="button" className="close-form" onClick={onClose} aria-label="Close">
             &times;
           </button>
         </div>
 
-        <div className="utm-strip">
-          {UTM_KEYS.some((k) => urlUtms[k]) ? (
-            UTM_KEYS.filter((k) => urlUtms[k]).map((k) => (
-              <span key={k} className="utm-pill on">
-                {k.replace("utm_", "")}: {urlUtms[k]}
-              </span>
-            ))
-          ) : (
-            <span className="utm-pill">No UTMs in URL yet</span>
-          )}
-        </div>
-
         <form id="leadForm" onSubmit={onSubmit}>
-          <p className="section-label">Student / contact</p>
           <label>
             Full name *
             <input
@@ -226,28 +165,26 @@ export default function InquireDrawer({ open, onClose }: Props) {
               autoComplete="name"
             />
           </label>
-          <div className="row2">
-            <label>
-              Email *
-              <input
-                required
-                type="email"
-                value={form.email}
-                onChange={(e) => setField("email", e.target.value)}
-                placeholder="you@email.com"
-                autoComplete="email"
-              />
-            </label>
-            <label>
-              Phone
-              <input
-                value={form.phone}
-                onChange={(e) => setField("phone", e.target.value)}
-                placeholder="+1 555 0100"
-                autoComplete="tel"
-              />
-            </label>
-          </div>
+          <label>
+            Email *
+            <input
+              required
+              type="email"
+              value={form.email}
+              onChange={(e) => setField("email", e.target.value)}
+              placeholder="you@email.com"
+              autoComplete="email"
+            />
+          </label>
+          <label>
+            Phone
+            <input
+              value={form.phone}
+              onChange={(e) => setField("phone", e.target.value)}
+              placeholder="+1 555 0100"
+              autoComplete="tel"
+            />
+          </label>
           <label>
             City
             <input
@@ -266,90 +203,10 @@ export default function InquireDrawer({ open, onClose }: Props) {
             />
           </label>
 
-          <p className="section-label">UTM (from URL — editable)</p>
-          <div className="row2">
-            {(["utm_source", "utm_medium"] as UtmKey[]).map((k) => (
-              <label key={k}>
-                {k}
-                <input value={form[k]} onChange={(e) => setField(k, e.target.value)} />
-              </label>
-            ))}
-          </div>
-          <div className="row2">
-            {(["utm_campaign", "utm_content"] as UtmKey[]).map((k) => (
-              <label key={k}>
-                {k}
-                <input value={form[k]} onChange={(e) => setField(k, e.target.value)} />
-              </label>
-            ))}
-          </div>
-          <label>
-            utm_term
-            <input
-              value={form.utm_term}
-              onChange={(e) => setField("utm_term", e.target.value)}
-            />
-          </label>
-          <label>
-            landing_page_url
-            <input
-              type="url"
-              value={form.landing_page_url}
-              onChange={(e) => setField("landing_page_url", e.target.value)}
-            />
-          </label>
-
-          <p className="section-label">Campaign / ads (optional)</p>
-          <div className="row2">
-            <label>
-              campaign_id
-              <input
-                value={form.campaign_id}
-                onChange={(e) => setField("campaign_id", e.target.value)}
-              />
-            </label>
-            <label>
-              campaign_name
-              <input
-                value={form.campaign_name}
-                onChange={(e) => setField("campaign_name", e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="row2">
-            <label>
-              ad_group_id
-              <input
-                value={form.ad_group_id}
-                onChange={(e) => setField("ad_group_id", e.target.value)}
-              />
-            </label>
-            <label>
-              ad_group_name
-              <input
-                value={form.ad_group_name}
-                onChange={(e) => setField("ad_group_name", e.target.value)}
-              />
-            </label>
-          </div>
-          <div className="row2">
-            <label>
-              ad_id
-              <input value={form.ad_id} onChange={(e) => setField("ad_id", e.target.value)} />
-            </label>
-            <label>
-              ad_name
-              <input
-                value={form.ad_name}
-                onChange={(e) => setField("ad_name", e.target.value)}
-              />
-            </label>
-          </div>
-
           <button type="submit" className="btn" disabled={sending}>
             {sending ? "Sending…" : "Submit inquiry"}
           </button>
-          <p className="fine">Secrets stay in this browser tab only.</p>
+          <p className="fine">We’ll never share your info with third parties.</p>
         </form>
 
         {status && (
@@ -360,7 +217,7 @@ export default function InquireDrawer({ open, onClose }: Props) {
 
         {debug && (
           <div className="debug open">
-            <details open>
+            <details>
               <summary>Request / response / curl</summary>
               <pre>{debug.request}</pre>
               <pre>{debug.response}</pre>
