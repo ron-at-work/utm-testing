@@ -35,7 +35,7 @@ export type LeadPayload = {
 };
 
 export const DEFAULT_API = {
-  apiBase: "http://api-dev.houseofapps.ai",
+  apiBase: "https://api-dev.houseofapps.ai",
   apiPath: "/v1/integrations/leads",
   licenseKey: "lic-IMK4C8FcTTgK+BdNCD2FaLDq4pUNo8EFW4d",
   appSecret:
